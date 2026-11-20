@@ -1,0 +1,16 @@
+services:
+  polyedge:
+    build: .
+    container_name: polyedge
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - polyedge_data:/app/data
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Trading__StartingBalance: "100"
+      Trading__RiskPerTradeUsd: "5"
+      Trading__Enabled: "true"
+volumes:
+  polyedge_data:
