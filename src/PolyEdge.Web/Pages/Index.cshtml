@@ -28,7 +28,7 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-ser
 <div class="panel p-3"><div class="d-flex justify-content-between align-items-center mb-2"><div class="section-title">Tracked wallet activity</div><span class="pill">Reference only · not copied</span></div><div class="small-note mb-2">Observed public fills from the four research wallets. These do not affect the $100 paper account.</div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Time (UTC)</th><th>Wallet</th><th>Asset</th><th>Market</th><th>Side / outcome</th><th>Price</th><th>Size</th></tr></thead><tbody id="wallets"><tr><td colspan="7" class="muted">Waiting for wallet data…</td></tr></tbody></table></div></div>
 <footer class="small-note py-4">PolyEdge V1 · Paper only · No private keys · No live order placement · Data may be delayed or incomplete.</footer>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
 <script>
 const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v||0));
 const pct=v=>(Number(v||0)).toFixed(2)+'%'; const cls=v=>Number(v)>=0?'positive':'negative';
