@@ -1,4 +1,7 @@
-**/bin
-**/obj
-.git
-.vs
+**/bin/
+**/obj/
+**/.vs/
+**/.git/
+**/polyedge.db
+**/polyedge.db-shm
+**/polyedge.db-wal

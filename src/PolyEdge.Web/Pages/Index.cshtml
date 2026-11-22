@@ -26,6 +26,18 @@ body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-ser
 <div class="panel p-3 mb-4"><div class="d-flex justify-content-between align-items-center mb-2"><div class="section-title">Open paper positions</div><span class="pill">Live mark-to-bid</span></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Asset / market</th><th>Side</th><th>Entry</th><th>Mark</th><th>Shares</th><th>Invested</th><th>Unrealized P&amp;L</th><th>Opened (UTC)</th></tr></thead><tbody id="positions"><tr><td colspan="8" class="muted">No open positions</td></tr></tbody></table></div></div>
 <div class="panel p-3 mb-4"><div class="d-flex justify-content-between align-items-center mb-2"><div class="section-title">Completed paper trades</div><span class="pill">Last 100</span></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Closed (UTC)</th><th>Asset / market</th><th>Side</th><th>Entry</th><th>Exit</th><th>Shares</th><th>Invested</th><th>Net P&amp;L</th><th>Exit reason</th></tr></thead><tbody id="trades"><tr><td colspan="9" class="muted">No completed trades yet</td></tr></tbody></table></div></div>
 <div class="panel p-3"><div class="d-flex justify-content-between align-items-center mb-2"><div class="section-title">Tracked wallet activity</div><span class="pill">Reference only · not copied</span></div><div class="small-note mb-2">Observed public fills from the four research wallets. These do not affect the $100 paper account.</div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Time (UTC)</th><th>Wallet</th><th>Asset</th><th>Market</th><th>Side / outcome</th><th>Price</th><th>Size</th></tr></thead><tbody id="wallets"><tr><td colspan="7" class="muted">Waiting for wallet data…</td></tr></tbody></table></div></div>
+<div class="panel p-3 mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3"><div><div class="section-title">Weather market monitor</div><div class="small-note">Gamma discovery · AviationWeather station catalog · Monitor only (no positions/orders)</div></div><span class="pill">WEATHER V1</span></div>
+<div class="row g-3 mb-3">
+<div class="col-6 col-md-2"><div class="small-note">Total markets</div><div class="fs-4 fw-bold" id="weatherTotal">—</div></div>
+<div class="col-6 col-md-2"><div class="small-note">Active markets</div><div class="fs-4 fw-bold" id="weatherActive">—</div></div>
+<div class="col-6 col-md-2"><div class="small-note">Pending mapping</div><div class="fs-4 fw-bold" id="weatherPending">—</div></div>
+<div class="col-6 col-md-2"><div class="small-note">Candidates</div><div class="fs-4 fw-bold" id="weatherCandidates">—</div></div>
+<div class="col-6 col-md-2"><div class="small-note">Ambiguous</div><div class="fs-4 fw-bold" id="weatherAmbiguous">—</div></div>
+<div class="col-6 col-md-2"><div class="small-note">Stations / verified</div><div class="fs-4 fw-bold"><span id="weatherStations">—</span> / <span id="weatherVerified">—</span></div></div>
+</div>
+<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Market</th><th>City</th><th>Metric</th><th>End (UTC)</th><th>Mapping</th><th>Discovered</th></tr></thead><tbody id="weatherMarkets"><tr><td colspan="6" class="muted">Waiting for first discovery cycle…</td></tr></tbody></table></div>
+</div>
 <footer class="small-note py-4">PolyEdge V1 · Paper only · No private keys · No live order placement · Data may be delayed or incomplete.</footer>
 </main>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
@@ -44,9 +56,16 @@ async function refresh(){try{const r=await fetch('/api/dashboard');if(!r.ok)thro
  document.getElementById('updated').textContent=new Date().toLocaleTimeString();
  }catch(e){document.getElementById('connection').textContent='API offline';}}
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function weather(){try{const r=await fetch('/api/weather/summary');if(!r.ok)return;const d=await r.json();
+ document.getElementById('weatherTotal').textContent=d.totalMarkets;document.getElementById('weatherActive').textContent=d.activeMarkets;
+ document.getElementById('weatherPending').textContent=d.pendingMappings;document.getElementById('weatherCandidates').textContent=d.candidateMappings;
+ document.getElementById('weatherAmbiguous').textContent=d.ambiguousMappings;document.getElementById('weatherStations').textContent=d.activeStations;
+ document.getElementById('weatherVerified').textContent=d.verifiedMappings;
+ document.getElementById('weatherMarkets').innerHTML=d.recentMarkets.length?d.recentMarkets.map(m=>`<tr><td>${escapeHtml(m.question)}</td><td>${escapeHtml(m.city||'—')}${m.country?' · '+escapeHtml(m.country):''}</td><td>${escapeHtml(m.metric||'—')} ${escapeHtml(m.unit||'')}</td><td>${m.endDateUtc?dt(m.endDateUtc):'—'}</td><td><span class="pill">${escapeHtml(m.mappingStatus)}</span></td><td>${dt(m.lastDiscoveredUtc)}</td></tr>`).join(''):'<tr><td colspan="6" class="muted">No weather markets discovered yet</td></tr>';
+ }catch{}}
 async function wallets(){try{const r=await fetch('/api/wallet-fills');const d=await r.json();document.getElementById('wallets').innerHTML=d.length?d.map(x=>`<tr><td>${dt(x.timestampUtc)}</td><td title="${x.wallet}">${x.wallet.slice(0,8)}…</td><td>${x.asset}</td><td>${escapeHtml(x.market)}</td><td>${x.side} / ${x.outcome}</td><td>${Number(x.price).toFixed(4)}</td><td>${Number(x.size).toFixed(2)}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">No wallet fills collected yet</td></tr>';}catch{}}
 document.getElementById('toggleBtn').onclick=async()=>{const r=await fetch('/api/trading/toggle',{method:'POST'});const d=await r.json();document.getElementById('toggleBtn').textContent=d.enabled?'Pause bot':'Resume bot';};
 document.getElementById('resetBtn').onclick=async()=>{if(!confirm('Paper hesabını $100 başlangıç bakiyesine sıfırlamak ve tüm geçmiş kayıtları silmek istiyor musun?'))return;await fetch('/api/trading/reset',{method:'POST'});await refresh();};
-const conn=new signalR.HubConnectionBuilder().withUrl('/hubs/dashboard').withAutomaticReconnect().build();conn.on('dashboardUpdated',refresh);conn.start().then(()=>document.getElementById('connection').textContent='Live').catch(()=>document.getElementById('connection').textContent='Polling');setInterval(refresh,4000);setInterval(wallets,30000);refresh();wallets();
+const conn=new signalR.HubConnectionBuilder().withUrl('/hubs/dashboard').withAutomaticReconnect().build();conn.on('dashboardUpdated',refresh);conn.start().then(()=>document.getElementById('connection').textContent='Live').catch(()=>document.getElementById('connection').textContent='Polling');setInterval(refresh,4000);setInterval(wallets,30000);setInterval(weather,30000);refresh();wallets();weather();
 </script>
 </body></html>

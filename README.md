@@ -68,7 +68,7 @@ Wallet adresleri aynı dosyada `Wallets` listesinde tanımlıdır. Bu cüzdanlar
 
 ## Local Docker
 
-Proje kökünde:
+Proje kökünde (Dockerfile ve docker-compose.yml çözüm kökünde bulunur):
 
 ```bash
 docker compose up -d --build
@@ -134,7 +134,7 @@ git pull
 sudo docker compose up -d --build
 ```
 
-SQLite verisi `polyedge_data` named volume içinde kalır. Container yeniden oluşturulsa da volume silinmediği sürece paper hesap geçmişi korunur. Yedek almak için volume snapshot veya düzenli DB backup planla.
+SQLite verisi `/app/data/polyedge.db` konumunda, `polyedge_data` named volume içinde kalır. Container yeniden oluşturulsa da volume silinmediği sürece paper hesap geçmişi korunur. `docker compose down -v` komutunu çalıştırma; `-v` veritabanı volume'ünü siler. Yedek almak için volume snapshot veya düzenli DB backup planla.
 
 ## API endpoints
 
@@ -161,3 +161,45 @@ SQLite verisi `polyedge_data` named volume içinde kalır. Container yeniden olu
 - Polymarket CLOB order book: `https://clob.polymarket.com/book?token_id=...`
 - Polymarket Data API trades: `https://data-api.polymarket.com/trades?user=...`
 - Binance public WebSocket: `wss://stream.binance.com:9443/stream?streams=btcusdt@bookTicker/ethusdt@bookTicker/solusdt@bookTicker`
+
+## Weather V1 monitor (added)
+
+Weather V1 is an independent **monitor-only** module. It does not open paper positions and does not place live orders.
+
+- Discovers active, non-closed markets through the Polymarket Gamma `/markets` endpoint using 500-row offset pagination.
+- Stores weather markets in the existing SQLite database without deleting or recreating the current paper-trading data.
+- Classifies likely weather metrics and extracts limited city / temperature-bucket hints from market text. These are heuristics, not resolution decisions.
+- Refreshes the worldwide AviationWeather station catalog from its daily `stations.cache.json.gz` file.
+- Creates only unverified station mapping candidates when an ICAO station code is explicitly present in the market description / extracted resolution text. It does not select the nearest airport based only on city name.
+- Exposes `/api/weather/summary` and adds a Weather Market Monitor panel to the dashboard.
+
+### Weather configuration
+
+`appsettings.json` contains:
+
+```json
+"Weather": {
+  "Enabled": true,
+  "DiscoveryIntervalMinutes": 30,
+  "StationRefreshHours": 24,
+  "GammaPageSize": 500,
+  "GammaMarketsUrl": "https://gamma-api.polymarket.com/markets",
+  "StationCacheUrl": "https://aviationweather.gov/data/cache/stations.cache.json.gz"
+}
+```
+
+Set `Weather:Enabled` to `false` to disable the weather worker. The first discovery cycle runs when the application starts; later cycles follow the configured interval.
+
+### Database compatibility
+
+The application retains its existing `EnsureCreatedAsync` initialization. Because EF Core `EnsureCreated` does not add tables to an existing database, `WeatherSchemaInitializer` runs idempotent `CREATE TABLE IF NOT EXISTS` statements for the three Weather tables. Existing account, position, trade, and wallet-fill rows are not dropped or reset.
+
+### Build and run
+
+```powershell
+dotnet restore .\PolyEdge.sln
+dotnet build .\PolyEdge.sln -c Release
+dotnet run --project .\src\PolyEdge.Web\PolyEdge.Web.csproj
+```
+
+The dashboard's Weather Market Monitor shows discovery and mapping counts. `Pending`, `Candidate`, and `Ambiguous` are not verified mappings. No weather candidate is eligible for any trading logic in this version.
